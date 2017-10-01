@@ -1,14 +1,18 @@
 package com.mygdx.game;
 
-import java.util.ArrayList;
-
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.math.Intersector;
+import com.badlogic.gdx.math.Rectangle;
+
+import java.util.ArrayList;
+
+
+
 
 public class CollisionDetection extends ApplicationAdapter {
 
@@ -48,11 +52,8 @@ public class CollisionDetection extends ApplicationAdapter {
 	enum Axis { X, Y };
 	enum Direction { U, D, L, R };
 
-    @Override
+	@Override
 	public void create () {
-
-        Pixmap Ppix = new Pixmap(Gdx.files.internal("player.png")); //2D array of pixels taken from player pic
-        Pixmap Epix = new Pixmap(Gdx.files.internal("enemy.png"));
 
 		batch = new SpriteBatch();
 		tileTexture = new Texture("block.png");
@@ -60,10 +61,10 @@ public class CollisionDetection extends ApplicationAdapter {
 		screenHeight = Gdx.graphics.getHeight();
 
 		// add some entities including a player
-		entities.add(new Player(this, 100, 150, 20, 20, 120.0f, Ppix));
-		entities.add(new Entity(this, 50, 150, 20, 20, 120.0f, Epix));
-		entities.add(new Entity(this, 200, 200, 20, 20, 120.0f, Epix));
-		entities.add(new Entity(this, 180, 50, 20, 20, 120.0f, Epix));
+		entities.add(new Player(this, 100, 150, 20, 20, 120.0f, new Texture("player.png")));
+		entities.add(new Entity(this, 50, 150, 20, 20, 120.0f, new Texture("enemy.png")));
+		entities.add(new Entity(this, 200, 200, 20, 20, 120.0f, new Texture("enemy.png")));
+		entities.add(new Entity(this, 180, 50, 20, 20, 120.0f, new Texture("enemy.png")));
 
 	}
 
@@ -91,7 +92,7 @@ public class CollisionDetection extends ApplicationAdapter {
 			// full move with no collision
 			e.move(newX, newY);
 		}
-        
+
 		// else collision with wither tile or entity occurred
 	}
 
@@ -106,37 +107,104 @@ public class CollisionDetection extends ApplicationAdapter {
 
 		// todo: add boundary checks...
 
+		if (!tileTexture.getTextureData().isPrepared())
+		{
+			tileTexture.getTextureData().prepare();
+		}
+		Pixmap tile = tileTexture.getTextureData().consumePixmap();
+
 		// tile checks
-		for(int x = x1; x <= x2; x++) {
-			for(int y = y1; y <= y2; y++) {
-				if(map[x][y] == 1) {
-					collision = true;
-					e.tileCollision(map[x][y], x, y, newX, newY, direction);
+		for(int x = x1; x <= x2; x++)
+		{
+			for(int y = y1; y <= y2; y++)
+			{
+				if(map[x][y] == 1)
+				{
+
+					Rectangle tRec = new Rectangle(newX,newY,tile.getWidth(),tile.getHeight());
+
+					Rectangle eRec = new Rectangle(newX,newY,e.width,e.height);
+
+					Rectangle intersection = new Rectangle();
+					Intersector.intersectRectangles(tRec,eRec,intersection);
+
+					for(int h = 0; h < e.pix.getHeight(); h++)
+					{
+						for (int w = 0; w < e.pix.getWidth(); w++)
+						{
+
+							int xx1 = (int)Math.abs(intersection.x - newX) + w;
+							int xx2 = (int)Math.abs(intersection.x - newX) + w;
+
+							int yy1 = (int)Math.abs(intersection.y - newY) + h;
+							int yy2 = (int)Math.abs(intersection.y - newY) + h;
+
+							int alpha1 = com.badlogic.gdx.graphics.Color.alpha(e.pix.getPixel(xx1,yy1));
+							int alpha2 = com.badlogic.gdx.graphics.Color.alpha(e.pix.getPixel(xx2,yy2));
+
+							if (alpha1 != 0 && alpha2 != 0)
+							{
+								collision = true;
+								e.tileCollision(map[x][y], x, y, newX, newY, direction);
+							}
+
+						}
+					}
+
 				}
+
+
 			}
 		}
 
 		return collision;
 	}
 
-	public boolean entityCollision(Entity e1, Direction direction, float newX, float newY) {
+	public boolean entityCollision(Entity e1, Direction direction, float newX, float newY)
+	{
 		boolean collision = false;
 
 		for(int i = 0; i < entities.size(); i++) {
 			Entity e2 = entities.get(i);
 
-			// we don't want to check for collisions between the same entity
 			if(e1 != e2) {
-				// axis aligned rectangle rectangle collision detection
-				if(newX < e2.x + e2.width && e2.x < newX + e1.width &&
-						newY < e2.y + e2.height && e2.y < newY + e1.height) {
-					collision = true;
 
-					e1.entityCollision(e2, newX, newY, direction);
+				if (newX < e2.x + e2.width && e2.x < newX + e1.width &&
+						newY < e2.y + e2.height && e2.y < newY + e1.height)
+				{
+
+					Rectangle e1Rec = new Rectangle(newX,newY,e1.width,e1.height);
+					Rectangle e2Rec = new Rectangle(newX,newY,e2.width,e2.height);
+
+					Rectangle intersection = new Rectangle();
+					Intersector.intersectRectangles(e1Rec,e2Rec,intersection);
+
+					for(int h = 0; h < e1.pix.getHeight(); h++) {
+						for (int w = 0; w < e1.pix.getWidth(); w++)
+						{
+
+							int x1 = (int)Math.abs(intersection.x - newX) + w;
+							int x2 = (int)Math.abs(intersection.x - newX) + w;
+
+							int y1 = (int)Math.abs(intersection.y - newY) + h;
+							int y2 = (int)Math.abs(intersection.y - newY) + h;
+
+							int alpha1 = com.badlogic.gdx.graphics.Color.alpha(e1.pix.getPixel(x1,y1));
+							int alpha2 = com.badlogic.gdx.graphics.Color.alpha(e2.pix.getPixel(x2,y2));
+
+							if (alpha1 != 0 && alpha2 != 0)
+							{
+								collision = true;
+								e1.entityCollision(e2, newX, newY, direction);
+							}
+
+						}
+					}
+
+
 				}
 			}
 		}
-
 		return collision;
 	}
 
