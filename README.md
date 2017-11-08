@@ -1,2 +1,2 @@
 # CollisionDetection
-Assignment 2 for Game Dev (CSC2003S)
+Experimenting with pixel perfect collision using libgdx
